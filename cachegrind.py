@@ -6,7 +6,6 @@ Requires Python 3.
 
 License: https://opensource.org/licenses/MIT
 
-
 ## Features
 
 * Disables ASLR.
@@ -20,20 +19,24 @@ https://pythonspeed.com/articles/consistent-benchmarking-in-ci/
 ## Usage
 
 This script has no compatibility guarnatees, I recommend copying it into your
-repository. To use:
+repository.  To use:
 
 $ python3 cachegrind.py ./yourprogram --yourparam=yourvalues
 
 The last line printed will be a combined performance metric.
 
+## Changelog
+
+* **Dec 21, 2020:** Switched to parsing the Cachegrind output file, rather than
+  parsing the stderr output.
 
 Copyright © 2020, Hyphenated Enterprises LLC.
 """
 
 from typing import List, Dict
-from subprocess import check_output, PIPE, STDOUT, Popen
-import re
+from subprocess import check_call, check_output
 import sys
+from tempfile import NamedTemporaryFile
 
 ARCH = check_output(["uname", "-m"]).strip()
 
@@ -45,7 +48,8 @@ def _run(args_list: List[str]) -> Dict[str, int]:
 
     For now we just ignore program output, and in general this is not robust.
     """
-    complete_args = [
+    temp_file = NamedTemporaryFile("r+")
+    check_call([
         # Disable ASLR:
         "setarch",
         ARCH,
@@ -58,26 +62,23 @@ def _run(args_list: List[str]) -> Dict[str, int]:
         "--I1=32768,8,64",
         "--D1=32768,8,64",
         "--LL=8388608,16,64",
-    ] + args_list
-    popen = Popen(complete_args, stderr=PIPE, universal_newlines=True)
-    stderr = popen.stderr.read()
-    popen.wait()
+        "--cachegrind-out-file=" + temp_file.name,
+    ] + args_list)
+    return parse_cachegrind_output(temp_file)
 
-    # Discovered afterwards we can parse the cachegrind.out.<pid> file's last
-    # line. Oh well, maybe in rewrite.
-    result = {}
-    for line in stderr.splitlines():
-        if re.match("^==[0-9]*== ", line):
-            match = re.match("^==[0-9]*== ([ILD][A-Za-z0-9 ]*):  *([0-9,]*)", line)
-            if match:
-                name, value = match.groups()
-                # Drop extra spaces:
-                name = " ".join(name.split())
-                # Convert "123,456" into integer:
-                value = int(value.replace(",", ""))
-                result[name] = value
-        sys.stderr.write(line + "\n")
-    return result
+
+def parse_cachegrind_output(temp_file):
+    # Parse the output file:
+    lines = iter(temp_file)
+    for line in lines:
+        if line.startswith("events: "):
+            header = line[len("events: "):].strip()
+            break
+    for line in lines:
+        last_line = line
+    assert last_line.startswith("summary: ")
+    last_line = last_line[len("summary:"):].strip()
+    return dict(zip(header.split(), [int(i) for i in last_line.split()]))
 
 
 def get_counts(cg_results: Dict[str, int]) -> Dict[str, int]:
@@ -93,19 +94,19 @@ def get_counts(cg_results: Dict[str, int]) -> Dict[str, int]:
     cache.
     """
     result = {}
+    d = cg_results
 
-    ram_hits = cg_results["LL misses"]
-    assert ram_hits == cg_results["LLi misses"] + cg_results["LLd misses"]
+    ram_hits = d["DLmr"] + d["DLmw"] + d["ILmr"]
 
-    l3_hits = cg_results["LL refs"]
-    assert l3_hits == cg_results["I1 misses"] + cg_results["D1 misses"]
+    l3_hits = d["I1mr"] + d["D1mw"] + d["D1mr"]
 
-    total_memory_rw = cg_results["I refs"] + cg_results["D refs"]
+    total_memory_rw = d["Ir"] + d["Dr"] + d["Dw"]
     l1_hits = total_memory_rw - l3_hits - ram_hits
 
     result["l1"] = l1_hits
     result["l3"] = l3_hits
     result["ram"] = ram_hits
+
     return result
 
 
