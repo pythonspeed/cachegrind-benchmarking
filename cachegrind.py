@@ -25,11 +25,6 @@ $ python3 cachegrind.py ./yourprogram --yourparam=yourvalues
 
 The last line printed will be a combined performance metric.
 
-## Changelog
-
-* **Dec 21, 2020:** Switched to parsing the Cachegrind output file, rather than
-  parsing the stderr output.
-
 Copyright © 2020, Hyphenated Enterprises LLC.
 """
 
@@ -98,10 +93,11 @@ def get_counts(cg_results: Dict[str, int]) -> Dict[str, int]:
 
     ram_hits = d["DLmr"] + d["DLmw"] + d["ILmr"]
 
-    l3_hits = d["I1mr"] + d["D1mw"] + d["D1mr"]
+    l3_hits = d["I1mr"] + d["D1mw"] + d["D1mr"] - ram_hits
 
     total_memory_rw = d["Ir"] + d["Dr"] + d["Dw"]
     l1_hits = total_memory_rw - l3_hits - ram_hits
+    assert total_memory_rw == l1_hits + l3_hits + ram_hits
 
     result["l1"] = l1_hits
     result["l3"] = l3_hits

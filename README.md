@@ -6,3 +6,11 @@ This repository includes a script to help you generate a single combined perform
 It is designed to run on Linux.
 
 See the code for usage.
+
+## Changelog
+
+### Dec 21, 2020
+
+* Switched to parsing the Cachegrind output file, rather than
+  parsing the stderr output.
+* Fixed bug that inflated L3 hit counts by counting RAM hits and L3 hits.
