@@ -9,8 +9,8 @@ See the code for usage.
 
 ## Changelog
 
-### Dec 21, 2020
+### Dec 22, 2020
 
-* Switched to parsing the Cachegrind output file, rather than
-  parsing the stderr output.
-* Fixed bug that inflated L3 hit counts by counting RAM hits and L3 hits.
+* Switched to parsing the Cachegrind output file, rather than parsing the stderr output.
+* Fixed a bug that inflated L3 hit counts by double-counting RAM hits as L3 hits.
+* Changed cost multiplier for RAM from 30 to 35 to account for the changes from the bug fix.

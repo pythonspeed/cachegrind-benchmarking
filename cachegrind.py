@@ -23,7 +23,12 @@ repository.  To use:
 
 $ python3 cachegrind.py ./yourprogram --yourparam=yourvalues
 
-The last line printed will be a combined performance metric.
+If you're benchmarking Python, make sure to set PYTHONHASHSEED to a fixed value
+(e.g. `export PYTHONHASHSEED=1234`).  Other languages may have similar
+requirements to reduce variability.
+
+The last line printed will be a combined performance metric, but you can tweak
+the script to extract more info, or use it as a library.
 
 Copyright © 2020, Hyphenated Enterprises LLC.
 """
@@ -111,9 +116,10 @@ def combined_instruction_estimate(counts: Dict[str, int]) -> int:
     Given the result of _run(), return estimate of total time to run.
 
     Multipliers were determined empirically, but some research suggests they're
-    a reasonable approximation for cache time ratios.
+    a reasonable approximation for cache time ratios.  L3 is probably too low,
+    but then we're not simulating L2...
     """
-    return counts["l1"] + (5 * counts["l3"]) + (30 * counts["ram"])
+    return counts["l1"] + (5 * counts["l3"]) + (35 * counts["ram"])
 
 
 if __name__ == "__main__":
