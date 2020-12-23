@@ -1,5 +1,5 @@
 """
-Proof-of-concept: run a program under Cachegrind, combining all the various
+Proof-of-concept: run_with_cachegrind a program under Cachegrind, combining all the various
 metrics into one single performance metric.
 
 Requires Python 3.
@@ -41,7 +41,7 @@ from tempfile import NamedTemporaryFile
 ARCH = check_output(["uname", "-m"]).strip()
 
 
-def _run(args_list: List[str]) -> Dict[str, int]:
+def run_with_cachegrind(args_list: List[str]) -> Dict[str, int]:
     """
     Run the the given program and arguments under Cachegrind, parse the
     Cachegrind specs.
@@ -83,13 +83,13 @@ def parse_cachegrind_output(temp_file):
 
 def get_counts(cg_results: Dict[str, int]) -> Dict[str, int]:
     """
-    Given the result of _run(), figure out the parameters we will use for final
+    Given the result of run_with_cachegrind(), figure out the parameters we will use for final
     estimate.
 
     We pretend there's no L2 since Cachegrind doesn't currently support it.
 
     Caveats: we're not including time to process instructions, only time to
-    access instruction cache(s), so we're assuming time to fetch and run
+    access instruction cache(s), so we're assuming time to fetch and run_with_cachegrind
     instruction is the same as time to retrieve data if they're both to L1
     cache.
     """
@@ -113,7 +113,7 @@ def get_counts(cg_results: Dict[str, int]) -> Dict[str, int]:
 
 def combined_instruction_estimate(counts: Dict[str, int]) -> int:
     """
-    Given the result of _run(), return estimate of total time to run.
+    Given the result of run_with_cachegrind(), return estimate of total time to run_with_cachegrind.
 
     Multipliers were determined empirically, but some research suggests they're
     a reasonable approximation for cache time ratios.  L3 is probably too low,
@@ -123,4 +123,4 @@ def combined_instruction_estimate(counts: Dict[str, int]) -> int:
 
 
 if __name__ == "__main__":
-    print(combined_instruction_estimate(get_counts(_run(sys.argv[1:]))))
+    print(combined_instruction_estimate(get_counts(run_with_cachegrind(sys.argv[1:]))))
